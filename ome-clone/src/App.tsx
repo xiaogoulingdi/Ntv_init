@@ -56,7 +56,7 @@ function App() {
 
   // --- 连接信令服务器 ---
   useEffect(() => {
-    socketRef.current = io('http://localhost:3000');
+    socketRef.current = io('http://154.193.217.58:3000');
     
     socketRef.current.on('connect', () => {
       console.log('Connected to signaling server');
