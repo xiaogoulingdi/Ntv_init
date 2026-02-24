@@ -10,7 +10,7 @@ const rtcConfig = {
 };
 
 function App() {
-  const [isMatching, setIsMatching] = useState(false);
+  const [chatState, setChatState] = useState<'idle' | 'matching' | 'connected'>('idle');
   
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -65,7 +65,7 @@ function App() {
     // --- 监听匹配成功 ---
     socketRef.current.on('match-found', async ({ partnerId, initiator }) => {
       console.log(`🎉 匹配成功！对手: ${partnerId}, 我是发起者吗? ${initiator}`);
-      setIsMatching(false);
+      setChatState('connected');
 
       // 1. 创建连接对象
       const pc = createPeerConnection(partnerId);
@@ -124,6 +124,23 @@ function App() {
       }
     });
 
+    // --- 监听对方断开连接 ---
+    socketRef.current.on('partner-left', () => {
+      console.log("👋 对方已离开");
+      // 清理连接
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+      // 清空对方画面
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
+      }
+      // 回到空闲状态
+      setChatState('idle');
+      alert('对方已离开');
+    });
+
     return () => {
       socketRef.current?.disconnect();
       // 记得清理 WebRTC 连接
@@ -131,11 +148,29 @@ function App() {
     };
   }, []);
 
-  // --- 点击匹配按钮 ---
-  const handleMatchClick = () => {
-    setIsMatching(true);
-    // 向后端发送匹配请求
+  // --- 清理 WebRTC 连接的通用函数 ---
+  const cleanup = () => {
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+    socketRef.current?.emit('leave');
+  };
+
+  // --- 换人按钮 ---
+  const handleNextPerson = () => {
+    cleanup();
+    setChatState('matching');
     socketRef.current?.emit('find-match');
+  };
+
+  // --- 停止按钮 ---
+  const handleStop = () => {
+    cleanup();
+    setChatState('idle');
   };
 
   // --- 获取本地视频流 ---
@@ -191,13 +226,41 @@ function App() {
 
       {/* 底部控制栏 */}
       <div className="controls">
-        <button
-          className="match-btn"
-          onClick={handleMatchClick}
-          disabled={isMatching}
-        >
-          {isMatching ? '寻找陌生人中...' : '开始匹配'}
-        </button>
+        {/* 根据当前的状态机，渲染不同的按钮 */}
+        {chatState === 'idle' && (
+          <button 
+            className="match-btn" 
+            onClick={() => { 
+              setChatState('matching'); 
+              socketRef.current?.emit('find-match'); 
+            }}
+          >
+            ▶ 开始匹配
+          </button>
+        )}
+
+        {chatState === 'matching' && (
+          <button className="match-btn" disabled>
+            🔍 寻找陌生人中...
+          </button>
+        )}
+
+        {chatState === 'connected' && (
+          <div className="btn-group">
+            <button
+              className="match-btn stop-btn"
+              onClick={handleStop}
+            >
+              ■ 停止
+            </button>
+            <button
+              className="match-btn next-btn"
+              onClick={handleNextPerson}
+            >
+              ⏭ 换人
+            </button>
+          </div>
+        )}
       </div>
 
     </div>

@@ -99,3 +99,27 @@
   cursor: default;
   opacity: 0.7;
 }
+
+/* 已连接状态的按钮组 */
+.btn-group {
+  display: flex;
+  gap: 12px;
+}
+
+.stop-btn {
+  background: linear-gradient(135deg, #666, #555);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.stop-btn:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.next-btn {
+  background: linear-gradient(135deg, #e53935, #c62828);
+  box-shadow: 0 2px 8px rgba(229, 57, 53, 0.3);
+}
+
+.next-btn:hover {
+  box-shadow: 0 4px 14px rgba(229, 57, 53, 0.4);
+}

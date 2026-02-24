@@ -11,6 +11,7 @@ const io = new Server(3000, {
 })
 
 let waitingQueue = []; //等待配对的用户队列
+const partners = new Map(); //配对关系映射：socketId -> partnerSocketId
 
 
 console.log('服务器已启动，监听3000端口');
@@ -34,6 +35,9 @@ io.on('connection', (socket)=>{
             //加入房间
             socket.join(roomId);
             partenerSocket.join(roomId);
+            //记录配对关系
+            partners.set(socket.id, partenerSocket.id);
+            partners.set(partenerSocket.id, socket.id);
             //通知双方配对成功
             socket.emit("match-found",{partnerId:partenerSocket.id, initiator:true});
             partenerSocket.emit("match-found",{partnerId:socket.id, initiator:false});
@@ -54,9 +58,27 @@ io.on('connection', (socket)=>{
 
     })
 
+    //用户主动换人
+    socket.on('leave', () => {
+        const partnerId = partners.get(socket.id);
+        if (partnerId) {
+            io.to(partnerId).emit('partner-left');
+            partners.delete(partnerId);
+            partners.delete(socket.id);
+        }
+    })
+
     socket.on('disconnect',()=>{
         console.log('用户', socket.id, '断开连接');
+        //从等待队列移除
         waitingQueue = waitingQueue.filter(user => user !== socket);
+        //通知正在通话的对方
+        const partnerId = partners.get(socket.id);
+        if (partnerId) {
+            io.to(partnerId).emit('partner-left');
+            partners.delete(partnerId);
+            partners.delete(socket.id);
+        }
     })
 
 })
