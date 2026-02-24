@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import {io} from 'socket.io-client';
+import { useState, useRef, useEffect } from 'react';
 import './App.css';
 
 function App() {
@@ -8,6 +9,19 @@ function App() {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
 
+  //链接信令服务器
+  useEffect(()=>{
+    // 连接到信令服务器
+    const socket = io('http://localhost:3000');
+    // 监听连接成功事件
+    socket.on('connect',()=>{
+      console.log('Connected to signaling server');
+    })
+    return()=>{
+      socket.disconnect();
+    }
+
+  },[])
   const handleMatchClick = () => {
     setIsMatching(true);
     setTimeout(() => {
@@ -15,6 +29,23 @@ function App() {
       alert("匹配成功！(待接入 WebRTC)");
     }, 2000);
   };
+
+//获取本地视频流
+useEffect(()=>{
+  const startLocalVideo = async ()=>{
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({video:true,audio:true})
+      if(localVideoRef.current){
+        localVideoRef.current.srcObject = stream;
+      }
+    } catch(error){
+      console.error('Error accessing media devices.',error);
+      alert('无法访问摄像头和麦克风，请检查权限设置。');
+    }
+  }
+  startLocalVideo();
+},[])
+
 
   // --- 界面布局 (UI) ---
   return (
